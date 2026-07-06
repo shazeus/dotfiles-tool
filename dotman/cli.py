@@ -211,20 +211,29 @@ def cmd_list(profile: Optional[str], all_profiles: bool) -> None:
 # ─── status ───────────────────────────────────────────────────────────────────
 
 @cli.command("status")
-def cmd_status() -> None:
+@click.option("-p", "--profile", default=None, help="Show status for only this profile.")
+@click.option("--all-profiles", is_flag=True, help="Show status across all profiles.")
+def cmd_status(profile: Optional[str], all_profiles: bool) -> None:
     """Show overall status: tracked files, git state, and active profile."""
     cfg = load_config()
     dotfiles_dir = get_dotfiles_dir(cfg)
-    entries = list_tracked()
+    if not all_profiles and profile is None:
+        profile = get_active_profile()
+    entries = list_tracked(profile if not all_profiles else None)
 
     ok_count = sum(1 for e in entries if check_status(e) == "ok")
     mod_count = sum(1 for e in entries if check_status(e) == "modified")
     err_count = len(entries) - ok_count - mod_count
     git_status = get_git_status(dotfiles_dir)
+    if all_profiles:
+        profile_scope = "all profiles"
+    else:
+        profile_scope = profile or "default"
 
     panel_lines = [
         f"[bold]Dotfiles dir:[/bold]  {dotfiles_dir}",
         f"[bold]Active profile:[/bold] {get_active_profile()}",
+        f"[bold]Profile scope:[/bold] {profile_scope}",
         f"[bold]Config file:[/bold]   {DOTMAN_HOME / 'config.json'}",
         "",
         f"[bold]Tracked files:[/bold] {len(entries)} total  "

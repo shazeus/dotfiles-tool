@@ -38,6 +38,7 @@ dotman track ~/.bashrc ~/.vimrc ~/.tmux.conf
 
 # Check status
 dotman status
+dotman status --profile work
 dotman list
 
 # Sync to remote
@@ -108,6 +109,9 @@ dotman track ~/.nanorc --profile server
 
 # Switch active profile
 dotman profile switch work
+
+# Inspect one profile without switching
+dotman status --profile server
 
 # Export/import for sharing
 dotman profile export work work-manifest.json
