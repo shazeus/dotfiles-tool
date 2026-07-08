@@ -59,3 +59,29 @@ def test_status_profile_filters(monkeypatch, tmp_path):
     assert result.exit_code == 0, result.output
     assert "all profiles" in result.output
     assert "2 total" in result.output
+
+
+def test_profile_create_list_and_switch_require_existing_profile(monkeypatch, tmp_path):
+    runner = CliRunner()
+    home = tmp_path / "home"
+    home.mkdir()
+    _set_dotman_home(monkeypatch, home)
+
+    env = {"HOME": str(home)}
+    dotfiles_dir = home / ".dotfiles"
+
+    result = runner.invoke(cli_module.cli, ["init", "--dir", str(dotfiles_dir)], env=env)
+    assert result.exit_code == 0, result.output
+
+    result = runner.invoke(cli_module.cli, ["profile", "create", "work"], env=env)
+    assert result.exit_code == 0, result.output
+    assert "Profile 'work' created" in result.output
+
+    result = runner.invoke(cli_module.cli, ["profile", "list"], env=env)
+    assert result.exit_code == 0, result.output
+    assert "work" in result.output
+    assert ".git" not in result.output
+
+    result = runner.invoke(cli_module.cli, ["profile", "switch", "missing"], env=env)
+    assert result.exit_code == 1, result.output
+    assert "does not exist" in result.output

@@ -1,10 +1,9 @@
 """Profile management for dotman."""
 
 import json
-import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 from dotman.config import (
     DOTMAN_HOME,
@@ -17,11 +16,21 @@ from dotman.config import (
 
 
 def list_profiles() -> List[str]:
+    cfg = load_config()
+    dotfiles_dir = get_dotfiles_dir(cfg)
     state = load_state()
-    profiles = set()
+    profiles = {"default", *cfg.get("profiles", {}).keys()}
+
+    if dotfiles_dir.exists():
+        profiles.update(
+            child.name
+            for child in dotfiles_dir.iterdir()
+            if child.is_dir() and not child.name.startswith(".") and child.name != "backups"
+        )
+
     for entry in state.get("tracked", {}).values():
         profiles.add(entry.get("profile", "default"))
-    profiles.add("default")
+
     return sorted(profiles)
 
 
@@ -32,6 +41,8 @@ def create_profile(name: str) -> Tuple[bool, str]:
     if profile_dir.exists():
         return False, f"Profile '{name}' already exists."
     profile_dir.mkdir(parents=True, exist_ok=True)
+    cfg.setdefault("profiles", {})[name] = {}
+    save_config(cfg)
     return True, f"Profile '{name}' created at {profile_dir}"
 
 
@@ -54,10 +65,17 @@ def delete_profile(name: str, force: bool = False) -> Tuple[bool, str]:
     for key in profile_files:
         del tracked[key]
     save_state(state)
+    cfg = load_config()
+    cfg.get("profiles", {}).pop(name, None)
+    if cfg.get("active_profile") == name:
+        cfg["active_profile"] = "default"
+    save_config(cfg)
     return True, f"Profile '{name}' deleted."
 
 
 def switch_profile(name: str) -> Tuple[bool, str]:
+    if name not in list_profiles():
+        return False, f"Profile '{name}' does not exist."
     cfg = load_config()
     cfg["active_profile"] = name
     save_config(cfg)
